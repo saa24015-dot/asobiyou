@@ -1,0 +1,2252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ドラゴンクエスト風 農業マスター - 肥料計算＆農家の大冒険RPG</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts for Retro Japanese 8-bit pixel aesthetic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <style>
+    /* Retro DQ Typography & Base Styling */
+    body {
+      font-family: 'DotGothic16', monospace;
+      background-color: #05070a;
+      color: #ffffff;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .font-pixel-en {
+      font-family: 'Press Start 2P', monospace;
+    }
+
+    /* Classic Dragon Quest Double Border Box */
+    .dq-window {
+      background-color: #000000;
+      border: 4px solid #ffffff;
+      outline: 2px solid #000000;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+      position: relative;
+    }
+
+    .dq-window-gold {
+      background-color: #0c0a00;
+      border: 4px solid #ffd700;
+      outline: 2px solid #000000;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    }
+
+    .dq-window-silver {
+      background-color: #050b10;
+      border: 4px solid #c0c0c0;
+      outline: 2px solid #000000;
+      box-shadow: 0 0 15px rgba(192, 192, 192, 0.3);
+    }
+
+    .dq-window-bronze {
+      background-color: #100803;
+      border: 4px solid #cd7f32;
+      outline: 2px solid #000000;
+      box-shadow: 0 0 15px rgba(205, 127, 50, 0.3);
+    }
+
+    /* Menu Item Cursor */
+    .dq-btn {
+      position: relative;
+      transition: all 0.1s ease;
+      cursor: pointer;
+    }
+    .dq-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .dq-btn:not(:disabled)::before {
+      content: "▶";
+      position: absolute;
+      left: 0.25rem;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0;
+      color: #ffe600;
+      transition: opacity 0.15s;
+    }
+    .dq-btn:not(:disabled):hover::before, .dq-btn:not(:disabled):focus::before, .dq-btn.active::before {
+      opacity: 1;
+    }
+    .dq-btn:not(:disabled):hover, .dq-btn:not(:disabled):focus, .dq-btn.active {
+      padding-left: 1.5rem !important;
+      color: #ffe600;
+    }
+
+    /* Scrollbar Retro Style */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #000;
+      border: 1px solid #333;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #fff;
+    }
+
+    /* Damage Floating Text Animation */
+    @keyframes floatUpFade {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      50% { opacity: 1; transform: translateY(-30px) scale(1.3); }
+      100% { opacity: 0; transform: translateY(-60px) scale(0.9); }
+    }
+    .damage-pop {
+      position: absolute;
+      animation: floatUpFade 0.8s ease-out forwards;
+      pointer-events: none;
+      font-weight: bold;
+      text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+      z-index: 50;
+    }
+
+    /* Flash Screen Animation for Critical Hits */
+    @keyframes critFlash {
+      0% { background-color: rgba(255, 255, 255, 0.8); }
+      100% { background-color: transparent; }
+    }
+    .flash-active {
+      animation: critFlash 0.25s ease-out;
+    }
+
+    /* Black Flash Screen Distortion Animation */
+    @keyframes kokusenFlash {
+      0% { background-color: rgba(0, 0, 0, 0.95); filter: invert(1); }
+      30% { background-color: rgba(120, 0, 0, 0.85); filter: contrast(250%); }
+      100% { background-color: transparent; filter: none; }
+    }
+    .kokusen-active {
+      animation: kokusenFlash 0.4s ease-out;
+    }
+
+    /* Enemy Attack Screen Shake */
+    @keyframes enemyAttackShake {
+      0% { transform: translate(0, 0); }
+      20% { transform: translate(-10px, 8px); }
+      40% { transform: translate(10px, -8px); }
+      60% { transform: translate(-8px, -5px); }
+      80% { transform: translate(8px, 5px); }
+      100% { transform: translate(0, 0); }
+    }
+    .shake-screen {
+      animation: enemyAttackShake 0.35s ease-in-out;
+    }
+
+    /* Zone Aura Animation */
+    @keyframes zonePulse {
+      0% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.6), inset 0 0 15px rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 25px rgba(220, 38, 38, 0.9), inset 0 0 30px rgba(239, 68, 68, 0.7); }
+      100% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.6), inset 0 0 15px rgba(239, 68, 68, 0.4); }
+    }
+    .zone-aura {
+      animation: zonePulse 1s infinite alternate;
+      border-color: #ef4444 !important;
+    }
+
+    /* Retro Pixel Gauge */
+    .dq-bar-fill {
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-start p-2 sm:p-4 overflow-x-hidden">
+
+  <!-- Flash Overlay for Critical Strikes -->
+  <div id="flashOverlay" class="fixed inset-0 pointer-events-none z-50"></div>
+
+  <!-- Audio Context Activation Shield -->
+  <div id="audioStartOverlay" onclick="enableAudio()" class="fixed inset-0 bg-black/80 z-40 flex flex-col items-center justify-center p-4 text-center cursor-pointer">
+    <div class="dq-window p-6 max-w-md w-full animate-bounce">
+      <h2 class="text-2xl font-bold text-yellow-300 mb-2">🐉 ぼうけんの旅へ！</h2>
+      <p class="text-gray-300 text-sm mb-4">画面をタップして BGM＆8ビット効果音 を有効にしてください</p>
+      <div class="text-xs bg-white/10 p-2 rounded text-emerald-300">【クリック / タップでスタート】</div>
+    </div>
+  </div>
+
+  <!-- Global Header / Auth Status Bar -->
+  <header class="w-full max-w-5xl mb-4">
+    <div class="dq-window p-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🌾</span>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold text-yellow-300 leading-tight">ドラゴンクエスト風 農業マスター</h1>
+          <p class="text-xs text-gray-400">肥料計算の館 ＆ 農家の大冒険RPG（世界ランキング対応）</p>
+        </div>
+      </div>
+
+      <!-- User DQ Status Frame -->
+      <div class="flex items-center gap-3 bg-gray-900 border-2 border-white/40 p-2 text-xs">
+        <div id="userAvatar" class="w-8 h-8 rounded bg-yellow-600 flex items-center justify-center text-lg font-bold border border-white">
+          勇
+        </div>
+        <div>
+          <div id="userName" class="text-yellow-300 font-bold truncate max-w-[120px]">勇者ローレライ</div>
+          <div class="flex gap-2 text-gray-300">
+            <span>Lv.<span id="headerLv">1</span></span>
+            <span>G:<span id="headerGold" class="text-yellow-400">0</span></span>
+          </div>
+        </div>
+        <button id="authBtn" onclick="handleAuthAction()" class="dq-btn border border-white px-2 py-1 bg-black text-xs hover:bg-yellow-900">
+          ログイン
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Auth Gate Screen (Shown when logged out) -->
+  <div id="authGate" class="w-full max-w-2xl my-auto py-8">
+    <div class="dq-window p-6 text-center">
+      <div class="text-5xl my-4">⚔️🌾🏆</div>
+      <h2 class="text-2xl sm:text-3xl font-bold text-yellow-300 mb-2">ぼうけんのしょをつくる</h2>
+      <p class="text-sm text-gray-300 mb-6 leading-relaxed">
+        Googleアカウントでログインすると、肥料計算の履歴を保存し、<br class="hidden sm:inline">
+        世界中の農家勇者たちと「世界勇者番付（世界ランキング）」で競い合うことができます！
+      </p>
+
+      <div class="space-y-3 max-w-xs mx-auto">
+        <button onclick="loginWithGoogle()" class="w-full dq-btn bg-emerald-800 border-2 border-white text-white font-bold py-3 px-4 text-sm hover:bg-emerald-700 shadow-lg">
+          🔑 Googleアカウントでログイン
+        </button>
+        <button onclick="loginGuest()" class="w-full dq-btn bg-gray-800 border-2 border-white/60 text-gray-300 py-2 px-4 text-xs hover:bg-gray-700">
+          👤 ゲストで冒険をはじめる（ローカルプレイ）
+        </button>
+      </div>
+
+      <div class="mt-8 text-xs text-gray-400 border-t border-gray-700 pt-4 text-left">
+        <p class="font-bold text-yellow-400 mb-1">【冒険者の心得】</p>
+        <ul class="list-disc list-inside space-y-1">
+          <li>10a, m², 坪, 反単位での精密肥料N-P-K計算</li>
+          <li>「ガンガンいこうぜ！」ボタンによる自動施肥最適化機能</li>
+          <li>リアルタイムスコア反映！世界勇者番付で1位を目指せ！</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Container (Shown after Login / Guest) -->
+  <main id="mainApp" class="w-full max-w-5xl flex-col gap-4 hidden">
+
+    <!-- Navigation Command Menu (DQ Style) -->
+    <nav class="dq-window p-2 mb-2">
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm text-center">
+        <button onclick="switchTab('rpg')" id="nav-rpg" class="dq-btn active p-2 border border-white/30 bg-gray-900 font-bold">
+          ⚔️ たたたかう
+        </button>
+        <button onclick="switchTab('calc')" id="nav-calc" class="dq-btn p-2 border border-white/30 bg-gray-900 font-bold">
+          🧪 肥料配合の館
+        </button>
+        <button onclick="switchTab('history')" id="nav-history" class="dq-btn p-2 border border-white/30 bg-gray-900 font-bold">
+          📜 ぼうけんの記録
+        </button>
+        <button onclick="switchTab('ranking')" id="nav-ranking" class="dq-btn p-2 border border-white/30 bg-gray-900 font-bold">
+          🏆 世界ランキング
+        </button>
+        <button onclick="switchTab('guide')" id="nav-guide" class="dq-btn p-2 border border-white/30 bg-gray-900 font-bold col-span-2 sm:col-span-1">
+          📖 ぼうけんの手引き
+        </button>
+      </div>
+    </nav>
+
+    <!-- TAB 1: DRAGON QUEST TURN-BASED RPG ("たたかう") -->
+    <section id="tab-rpg" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      
+      <!-- Left Screen: Battle Stage & Canvas -->
+      <div class="md:col-span-2 flex flex-col gap-3">
+        
+        <!-- Battle Window -->
+        <div id="battleWindow" class="dq-window p-4 flex flex-col items-center justify-between min-h-[380px] relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-emerald-950">
+          
+          <!-- Stage & Turn Status Header -->
+          <div class="w-full flex justify-between items-center bg-black/80 p-2 border border-white/40 text-xs sm:text-sm">
+            <div class="text-yellow-300 font-bold flex items-center gap-1">
+              <span>🏰</span> 第 <span id="rpgStageDisplay" class="text-xl text-white">1</span> 階層 : <span id="stageNameDisplay" class="text-emerald-400">始まりの農道</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div id="turnIndicator" class="px-2 py-0.5 bg-yellow-950 border border-yellow-400 text-yellow-300 font-bold text-xs">
+                ⚔️ 勇者のターン
+              </div>
+              <div id="zoneBadge" class="hidden px-2 py-0.5 bg-red-950 border border-red-500 text-red-400 font-bold text-xs animate-pulse rounded">
+                ⚡ ゾーン (集中120%): 残り<span id="zoneTimerDisplay">3</span>ターン
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero & Monster Status Bar Container -->
+          <div class="w-full grid grid-cols-2 gap-2 my-2">
+            <!-- Hero Status Window in Battle -->
+            <div class="dq-window bg-black/90 p-2 text-xs border border-blue-400">
+              <div class="text-blue-300 font-bold text-xs truncate flex justify-between">
+                <span>🛡️ 勇者</span>
+                <span class="text-gray-400">Lv.<span id="battleHeroLv">1</span></span>
+              </div>
+              <!-- Hero HP Gauge -->
+              <div class="mt-1">
+                <div class="flex justify-between text-[10px] text-emerald-400 font-bold">
+                  <span>HP</span>
+                  <span><span id="heroCurHp">100</span>/<span id="heroMaxHp">100</span></span>
+                </div>
+                <div class="w-full bg-gray-900 h-2.5 border border-white rounded-none overflow-hidden mt-0.5">
+                  <div id="heroHpBar" class="dq-bar-fill bg-emerald-500 h-full w-full"></div>
+                </div>
+              </div>
+              <!-- Hero MP Gauge -->
+              <div class="mt-1">
+                <div class="flex justify-between text-[10px] text-cyan-400 font-bold">
+                  <span>MP</span>
+                  <span><span id="heroCurMp">30</span>/<span id="heroMaxMp">30</span></span>
+                </div>
+                <div class="w-full bg-gray-900 h-2 border border-white rounded-none overflow-hidden mt-0.5">
+                  <div id="heroMpBar" class="dq-bar-fill bg-cyan-500 h-full w-full"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Monster Status Window in Battle -->
+            <div class="dq-window bg-black/90 p-2 text-xs border border-red-500">
+              <div id="monsterName" class="text-yellow-300 font-bold text-xs truncate">スライムキャベツ</div>
+              <!-- Monster HP Gauge -->
+              <div class="mt-1">
+                <div class="flex justify-between text-[10px] text-red-400 font-bold">
+                  <span>HP</span>
+                  <span><span id="monsterCurHp">120</span>/<span id="monsterMaxHp">120</span></span>
+                </div>
+                <div class="w-full bg-gray-800 h-2.5 border border-white rounded-none overflow-hidden mt-0.5">
+                  <div id="monsterHpBar" class="dq-bar-fill bg-red-600 h-full w-full"></div>
+                </div>
+              </div>
+              <div class="mt-1 flex justify-between text-[10px] text-gray-400">
+                <span>攻撃力: <span id="monsterAtk">12</span></span>
+                <span>守備力: <span id="monsterDef">2</span></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Canvas Monster Graphics -->
+          <div class="relative my-1 flex flex-col items-center justify-center cursor-pointer group" onclick="executePlayerAttack()">
+            <div class="relative">
+              <canvas id="monsterCanvas" width="200" height="180" class="drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)] transition-transform duration-75 group-active:scale-95"></canvas>
+            </div>
+          </div>
+
+          <!-- Battle Message Log -->
+          <div class="w-full dq-window bg-black p-2.5 text-xs min-h-[60px] max-h-[70px] overflow-y-auto border border-white text-emerald-300 leading-relaxed" id="battleLog">
+            まものが 現れた！ コマンドを 選択してください！
+          </div>
+        </div>
+
+        <!-- DQ Command Menu & Spells & Taijutsu -->
+        <div class="dq-window p-3 space-y-3">
+          
+          <!-- Basic Actions -->
+          <div>
+            <div class="text-xs text-yellow-300 font-bold mb-1.5 flex justify-between items-center">
+              <span>⚔️ 基本コマンド</span>
+              <span class="text-gray-400">攻撃力: <span id="rpgTapDmg" class="text-white">15</span> / 守備力: <span id="rpgDef" class="text-white">5</span></span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+              <button onclick="executePlayerAttack()" id="cmd-attack" class="dq-btn p-2 border-2 border-yellow-400 bg-yellow-950 text-yellow-300 font-bold hover:bg-yellow-800 text-center">
+                ⚔️ たたたかう
+              </button>
+              <button onclick="executePlayerDefend()" id="cmd-defend" class="dq-btn p-2 border border-white bg-gray-900 text-cyan-300 font-bold hover:bg-cyan-950 text-center">
+                🛡️ ぼうぎょ (半減)
+              </button>
+              <button onclick="executePlayerHeal()" id="cmd-heal" class="dq-btn p-2 border border-white bg-gray-900 text-emerald-300 font-bold hover:bg-emerald-950 text-center">
+                🧪 薬草回復 (MP:3)
+              </button>
+            </div>
+          </div>
+
+          <!-- Spells Section -->
+          <div class="border-t border-white/20 pt-2">
+            <div class="text-xs text-yellow-300 font-bold mb-1.5 flex justify-between items-center">
+              <span>✨ じゅもん (呪文)</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5 text-xs">
+              <button onclick="useSkill('baikilt')" id="skill-baikilt" class="dq-btn p-1.5 border border-white bg-gray-900 text-left hover:bg-yellow-950">
+                <div class="font-bold text-yellow-400 text-[11px]">バイキルト</div>
+                <div class="text-[9px] text-gray-400">MP:3 (攻撃3倍/3Turn)</div>
+              </button>
+              <button onclick="useSkill('melazoma')" id="skill-melazoma" class="dq-btn p-1.5 border border-white bg-gray-900 text-left hover:bg-red-950">
+                <div class="font-bold text-red-400 text-[11px]">メラゾーマ</div>
+                <div class="text-[9px] text-gray-400">MP:5 (超火炎)</div>
+              </button>
+              <button onclick="useSkill('madante')" id="skill-madante" class="dq-btn p-1.5 border border-white bg-gray-900 text-left hover:bg-pink-950">
+                <div class="font-bold text-pink-400 text-[11px]">マダンテ</div>
+                <div class="text-[9px] text-gray-400">MP:15 (究極爆発)</div>
+              </button>
+              <button onclick="useSkill('avadakedavra')" id="skill-avadakedavra" class="dq-btn p-1.5 border border-white bg-gray-900 text-left hover:bg-emerald-950">
+                <div class="font-bold text-emerald-300 text-[11px]">アバダケダブラ</div>
+                <div class="text-[9px] text-gray-400">MP:8 (即死光線)</div>
+              </button>
+              <button onclick="useSkill('parpunte')" id="skill-parpunte" class="dq-btn p-1.5 border border-white bg-gray-900 text-left hover:bg-purple-950">
+                <div class="font-bold text-purple-400 text-[11px]">パルプンテ</div>
+                <div class="text-[9px] text-gray-400">MP:4 (奇跡!?)</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Taijutsu & Cursed Tools Section -->
+          <div class="border-t border-white/20 pt-2">
+            <div class="text-xs text-red-400 font-bold mb-1.5 flex justify-between items-center">
+              <span>🥋 体術 ＆ 呪具</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
+              <button onclick="useSkill('kokusen')" id="skill-kokusen" class="dq-btn p-1.5 border-2 border-red-500 bg-black text-left hover:bg-red-950 shadow-[0_0_10px_rgba(239,68,68,0.6)]">
+                <div class="font-bold text-red-500 text-[11px] animate-pulse">⚡ 黒閃</div>
+                <div class="text-[9px] text-gray-300">MP:4 (ゾーン突入)</div>
+              </button>
+              <button onclick="useSkill('keiteiken')" id="skill-keiteiken" class="dq-btn p-1.5 border border-orange-500 bg-gray-900 text-left hover:bg-orange-950">
+                <div class="font-bold text-orange-400 text-[11px]">👊 逕庭拳</div>
+                <div class="text-[9px] text-gray-300">MP:3 (2段階追撃)</div>
+              </button>
+              <button onclick="useSkill('shakkondo')" id="skill-shakkondo" class="dq-btn p-1.5 border border-purple-500 bg-gray-900 text-left hover:bg-purple-950">
+                <div class="font-bold text-purple-400 text-[11px]">🗡️ 釈魂刀</div>
+                <div class="text-[9px] text-gray-300">MP:5 (守備無視)</div>
+              </button>
+              <button onclick="useSkill('amanosakahoko')" id="skill-amanosakahoko" class="dq-btn p-1.5 border border-cyan-500 bg-gray-900 text-left hover:bg-cyan-950">
+                <div class="font-bold text-cyan-400 text-[11px]">🔱 天逆鉾</div>
+                <div class="text-[9px] text-gray-300">MP:4 (解呪一撃)</div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Screen: Hero Status & Helpers (どうぐ / 助手) -->
+      <div class="flex flex-col gap-3">
+        
+        <!-- Hero Stats Status Window -->
+        <div class="dq-window p-4">
+          <h3 class="text-yellow-300 font-bold border-b border-white/40 pb-1 mb-2 text-sm flex items-center gap-2">
+            <span>🛡️</span> 勇者のステータス
+          </h3>
+          <div class="space-y-2 text-xs">
+            <div class="flex justify-between">
+              <span class="text-gray-400">レベル:</span>
+              <span class="font-bold text-yellow-300">Lv.<span id="statLevel">1</span></span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">経験値 (EXP):</span>
+              <span class="text-white"><span id="statExp">0</span> / <span id="statNextExp">100</span></span>
+            </div>
+            <div class="w-full bg-gray-800 h-2 border border-white">
+              <div id="expBar" class="dq-bar-fill bg-blue-500 h-full w-0"></div>
+            </div>
+            <div class="flex justify-between pt-1">
+              <span class="text-gray-400">所持ゴールド:</span>
+              <span class="font-bold text-yellow-400"><span id="statGold">0</span> G</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">ターン追撃 (仲間):</span>
+              <span class="text-emerald-400 font-bold"><span id="statAutoDps">0</span> /Turn</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-400">倒した魔物数:</span>
+              <span class="text-white"><span id="statKills">0</span> 匹</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Helper Shop / Auto Attack Mechanics -->
+        <div class="dq-window p-3 flex-1 flex flex-col">
+          <h3 class="text-yellow-300 font-bold border-b border-white/40 pb-1 mb-2 text-sm flex items-center gap-2">
+            <span>👨‍🌾</span> 仲間・農機具の雇用 (ターン追撃)
+          </h3>
+          <div class="space-y-2 overflow-y-auto max-h-[280px] pr-1">
+            
+            <!-- Helper 1 -->
+            <div class="p-2 border border-white/30 bg-black/60 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-xs text-emerald-300">🧚 スプリンクラー妖精</div>
+                <div class="text-[10px] text-gray-400">追撃: +10 (所持: <span id="count-fairy">0</span>)</div>
+              </div>
+              <button onclick="buyHelper('fairy')" id="btn-fairy" class="dq-btn px-2 py-1 border border-white text-xs bg-yellow-900 hover:bg-yellow-700">
+                <span id="cost-fairy">50</span> G
+              </button>
+            </div>
+
+            <!-- Helper 2 -->
+            <div class="p-2 border border-white/30 bg-black/60 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-xs text-cyan-300">🚜 トラクターゴーレム</div>
+                <div class="text-[10px] text-gray-400">追撃: +80 (所持: <span id="count-tractor">0</span>)</div>
+              </div>
+              <button onclick="buyHelper('tractor')" id="btn-tractor" class="dq-btn px-2 py-1 border border-white text-xs bg-yellow-900 hover:bg-yellow-700">
+                <span id="cost-tractor">300</span> G
+              </button>
+            </div>
+
+            <!-- Helper 3 -->
+            <div class="p-2 border border-white/30 bg-black/60 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-xs text-purple-300">🦅 ドローンホーク</div>
+                <div class="text-[10px] text-gray-400">追撃: +400 (所持: <span id="count-drone">0</span>)</div>
+              </div>
+              <button onclick="buyHelper('drone')" id="btn-drone" class="dq-btn px-2 py-1 border border-white text-xs bg-yellow-900 hover:bg-yellow-700">
+                <span id="cost-drone">2000</span> G
+              </button>
+            </div>
+
+            <!-- Helper 4 -->
+            <div class="p-2 border border-white/30 bg-black/60 flex items-center justify-between">
+              <div>
+                <div class="font-bold text-xs text-red-300">🚀 自動施肥AIロケット</div>
+                <div class="text-[10px] text-gray-400">追撃: +2500 (所持: <span id="count-rocket">0</span>)</div>
+              </div>
+              <button onclick="buyHelper('rocket')" id="btn-rocket" class="dq-btn px-2 py-1 border border-white text-xs bg-yellow-900 hover:bg-yellow-700">
+                <span id="cost-rocket">15000</span> G
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 2: DQ FERTILIZER CALCULATOR ("肥料配合の館") -->
+    <section id="tab-calc" class="hidden flex-col gap-4">
+      <div class="dq-window p-4 sm:p-6">
+        <div class="flex flex-wrap justify-between items-center border-b border-white/40 pb-3 mb-4 gap-2">
+          <div>
+            <h2 class="text-xl font-bold text-yellow-300 flex items-center gap-2">
+              <span>🧪</span> 肥料配合の館（錬金術）
+            </h2>
+            <p class="text-xs text-gray-300">作物の目標成分量(N-P-K)に合わせて肥料の必要投入量を精密計算・最適化します</p>
+          </div>
+          <button onclick="autoOptimizeFertilizer()" class="dq-btn bg-yellow-600 hover:bg-yellow-500 text-black font-bold px-4 py-2 border-2 border-white text-xs shadow-lg">
+            ⚡ ガンガンいこうぜ！（自動最適化）
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Column 1: Settings & Crop Preset -->
+          <div class="space-y-4">
+            <div class="p-3 border border-white/30 bg-gray-900/80">
+              <h3 class="text-xs font-bold text-yellow-300 mb-2">1. 圃場面積と単位の設定</h3>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label class="block text-gray-400 mb-1">面積数値</label>
+                  <input type="number" id="calcAreaInput" value="10" min="0.1" step="0.1" onchange="recalculateFertilizer()" class="w-full bg-black border border-white p-2 text-white font-mono">
+                </div>
+                <div>
+                  <label class="block text-gray-400 mb-1">単位</label>
+                  <select id="calcUnitSelect" onchange="recalculateFertilizer()" class="w-full bg-black border border-white p-2 text-white">
+                    <option value="10a">10アール (10a = 1000㎡)</option>
+                    <option value="m2">平方メートル (㎡)</option>
+                    <option value="tsubo">坪 (1坪 ≒ 3.3㎡)</option>
+                    <option value="tan">反 (1反 ≒ 991.7㎡)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-3 border border-white/30 bg-gray-900/80">
+              <h3 class="text-xs font-bold text-yellow-300 mb-2">2. 作物プリセット選択</h3>
+              <select id="cropPresetSelect" onchange="applyCropPreset()" class="w-full bg-black border border-white p-2 text-xs text-white mb-3">
+                <option value="tomato">🍅 トマト (N:15, P:20, K:18 g/㎡)</option>
+                <option value="cucumber">🥒 キュウリ (N:20, P:18, K:22 g/㎡)</option>
+                <option value="eggplant">🍆 ナス (N:22, P:18, K:22 g/㎡)</option>
+                <option value="spinach">🥬 ホウレンソウ (N:12, P:15, K:12 g/㎡)</option>
+                <option value="cabbage">🥬 キャベツ (N:25, P:20, K:20 g/㎡)</option>
+                <option value="onion">🧅 ネギ (N:20, P:15, K:20 g/㎡)</option>
+                <option value="rice">🌾 水稲 (N:8, P:8, K:8 g/㎡)</option>
+                <option value="custom">⚙️ カスタム入力</option>
+              </select>
+
+              <label class="block text-xs font-bold text-gray-300 mb-1">目標成分量 (kg / 10a換算)</label>
+              <div class="grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <span class="text-blue-400 font-bold">N (窒素)</span>
+                  <input type="number" id="targetN" value="15" step="0.1" onchange="recalculateFertilizer()" class="w-full bg-black border border-white p-1 text-white text-center font-mono mt-1">
+                </div>
+                <div>
+                  <span class="text-yellow-400 font-bold">P (リン酸)</span>
+                  <input type="number" id="targetP" value="20" step="0.1" onchange="recalculateFertilizer()" class="w-full bg-black border border-white p-1 text-white text-center font-mono mt-1">
+                </div>
+                <div>
+                  <span class="text-emerald-400 font-bold">K (加里)</span>
+                  <input type="number" id="targetK" value="18" step="0.1" onchange="recalculateFertilizer()" class="w-full bg-black border border-white p-1 text-white text-center font-mono mt-1">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 2: Fertilizer Selection List -->
+          <div class="lg:col-span-2 flex flex-col gap-4">
+            <div class="p-3 border border-white/30 bg-gray-900/80 flex-1">
+              <h3 class="text-xs font-bold text-yellow-300 mb-2 flex justify-between items-center">
+                <span>3. 使用する肥料と投入量指定</span>
+                <span class="text-[10px] text-gray-400">※単位: 指定圃場全体の総投入量(kg)</span>
+              </h3>
+
+              <div class="space-y-2 max-h-[300px] overflow-y-auto pr-1 text-xs" id="fertilizerInputsContainer">
+                <!-- Dynamic Fertilizer Row Elements populated by JS -->
+              </div>
+            </div>
+
+            <!-- N-P-K Status Gauges & Evaluation -->
+            <div class="dq-window bg-black p-4 border-2 border-white">
+              <h3 class="text-xs font-bold text-yellow-300 mb-3 border-b border-white/30 pb-1 flex justify-between">
+                <span>📊 施肥成分バランス診断</span>
+                <span id="balanceRatingText" class="text-emerald-400 font-bold">【状態: バッチリ】</span>
+              </h3>
+
+              <div class="space-y-3 text-xs">
+                <!-- N Gauge -->
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-blue-400 font-bold">窒素 (N): <span id="currentNVal">0</span> / <span id="targetNVal">15</span> kg</span>
+                    <span id="nStatusTag" class="text-gray-400">適量</span>
+                  </div>
+                  <div class="w-full bg-gray-900 h-3 border border-white">
+                    <div id="nBar" class="dq-bar-fill bg-blue-500 h-full w-0"></div>
+                  </div>
+                </div>
+
+                <!-- P Gauge -->
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-yellow-400 font-bold">リン酸 (P): <span id="currentPVal">0</span> / <span id="targetPVal">20</span> kg</span>
+                    <span id="pStatusTag" class="text-gray-400">適量</span>
+                  </div>
+                  <div class="w-full bg-gray-900 h-3 border border-white">
+                    <div id="pBar" class="dq-bar-fill bg-yellow-500 h-full w-0"></div>
+                  </div>
+                </div>
+
+                <!-- K Gauge -->
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-emerald-400 font-bold">加里 (K): <span id="currentKVal">0</span> / <span id="targetKVal">18</span> kg</span>
+                    <span id="kStatusTag" class="text-gray-400">適量</span>
+                  </div>
+                  <div class="w-full bg-gray-900 h-3 border border-white">
+                    <div id="kBar" class="dq-bar-fill bg-emerald-500 h-full w-0"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Save / Export Action Buttons -->
+              <div class="mt-4 pt-3 border-t border-white/30 flex flex-wrap gap-2 justify-end">
+                <button onclick="saveCalculationToFirestore()" class="dq-btn bg-emerald-800 hover:bg-emerald-700 text-white px-4 py-2 border border-white text-xs font-bold">
+                  📜 ぼうけんの記録に保存
+                </button>
+                <button onclick="exportCurrentCalcCSV()" class="dq-btn bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 border border-white text-xs">
+                  📥 CSVダウンロード
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: CALCULATION HISTORY ("ぼうけんの記録") -->
+    <section id="tab-history" class="hidden flex-col gap-4">
+      <div class="dq-window p-4 sm:p-6">
+        <div class="flex justify-between items-center border-b border-white/40 pb-3 mb-4">
+          <div>
+            <h2 class="text-xl font-bold text-yellow-300 flex items-center gap-2">
+              <span>📜</span> ぼうけんの記録（肥料計算履歴）
+            </h2>
+            <p class="text-xs text-gray-300">過去に保存した施肥計算プランを読み込み・再利用できます</p>
+          </div>
+          <button onclick="loadUserHistory()" class="dq-btn bg-gray-800 hover:bg-gray-700 px-3 py-1 border border-white text-xs">
+            🔄 更新
+          </button>
+        </div>
+
+        <div id="historyListContainer" class="space-y-3">
+          <div class="text-center py-8 text-gray-400 text-xs">
+            記録を読み込んでいます...
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: GLOBAL LEADERBOARD ("世界ランキング / 勇者番付") -->
+    <section id="tab-ranking" class="hidden flex-col gap-4">
+      <div class="dq-window p-4 sm:p-6">
+        
+        <!-- Header Banner -->
+        <div class="flex flex-wrap justify-between items-center border-b border-white/40 pb-3 mb-4 gap-2">
+          <div>
+            <h2 class="text-xl font-bold text-yellow-300 flex items-center gap-2">
+              <span>🏆</span> 世界勇者番付（グローバルランキング）
+            </h2>
+            <p class="text-xs text-gray-300">全国・世界中の農家勇者たちの挑戦の記録！ リアルタイムスコア反映</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <span class="inline-flex items-center gap-1 bg-emerald-950 border border-emerald-500 text-emerald-400 px-2.5 py-1">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> リアルタイム同期中
+            </span>
+            <button onclick="saveAndRefreshLeaderboard(true)" class="dq-btn bg-yellow-600 hover:bg-yellow-500 text-black font-bold px-3 py-1.5 border border-white text-xs shadow-md">
+              ⚡ スコアを登録 / 更新
+            </button>
+          </div>
+        </div>
+
+        <!-- Player Custom Profile Card (My Score Entry) -->
+        <div id="myRankingCard" class="dq-window-gold p-4 mb-4">
+          <div class="flex flex-wrap items-center justify-between border-b border-yellow-500/40 pb-2 mb-3 gap-2">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">🛡️</span>
+              <span class="font-bold text-yellow-300 text-sm">あなたの現在のぼうけんのしょ（ランキング用プロフ）</span>
+            </div>
+            <div class="text-xs text-yellow-400 font-bold">
+              想定世界順位: <span id="myEstimatedRankDisplay" class="text-white text-base">第 1 位</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs mb-3">
+            <div>
+              <label class="block text-gray-400 mb-1">勇者の名前 (最大12文字)</label>
+              <input type="text" id="rankUserNameInput" maxlength="12" placeholder="勇者ローレライ" class="w-full bg-black border border-yellow-400/60 p-1.5 text-white font-bold">
+            </div>
+            <div>
+              <label class="block text-gray-400 mb-1">称号 (肩書き)</label>
+              <select id="rankUserTitleInput" class="w-full bg-black border border-yellow-400/60 p-1.5 text-yellow-300 font-bold">
+                <option value="👑 伝説の農家勇者">👑 伝説の農家勇者</option>
+                <option value="🌾 施肥マスター">🌾 施肥マスター</option>
+                <option value="⚔️ 魔物ハンター">⚔️ 魔物ハンター</option>
+                <option value="🚜 鉄腕トラクター">🚜 鉄腕トラクター</option>
+                <option value="🍇 フルーツキング">🍇 フルーツキング</option>
+                <option value="🌱 新米農家">🌱 新米農家</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-gray-400 mb-1">ひとことメッセージ (最大20文字)</label>
+              <input type="text" id="rankUserMsgInput" maxlength="20" placeholder="肥料計算はバッチリ！100階層目指すぞ！" class="w-full bg-black border border-yellow-400/60 p-1.5 text-emerald-300">
+            </div>
+          </div>
+
+          <!-- My Stats Overview -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-black/60 p-2 border border-yellow-500/30 text-center text-xs">
+            <div>
+              <span class="text-gray-400 block text-[10px]">到達最高階層</span>
+              <span id="myStatStage" class="text-yellow-300 font-bold text-sm">第 1 階層</span>
+            </div>
+            <div>
+              <span class="text-gray-400 block text-[10px]">レベル</span>
+              <span id="myStatLv" class="text-emerald-400 font-bold text-sm">Lv.1</span>
+            </div>
+            <div>
+              <span class="text-gray-400 block text-[10px]">累計魔物撃破</span>
+              <span id="myStatKills" class="text-cyan-400 font-bold text-sm">0 匹</span>
+            </div>
+            <div>
+              <span class="text-gray-400 block text-[10px]">所持ゴールド</span>
+              <span id="myStatGold" class="text-yellow-400 font-bold text-sm">0 G</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ranking Sorting Category Tabs -->
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex flex-wrap gap-1 text-xs">
+            <button onclick="setLeaderboardCategory('stage')" id="cat-stage" class="dq-btn px-3 py-1.5 border border-white bg-yellow-900 text-yellow-300 font-bold">
+              🏰 到達階層順
+            </button>
+            <button onclick="setLeaderboardCategory('level')" id="cat-level" class="dq-btn px-3 py-1.5 border border-white/40 bg-gray-900 text-gray-300">
+              ⚡ レベル順
+            </button>
+            <button onclick="setLeaderboardCategory('kills')" id="cat-kills" class="dq-btn px-3 py-1.5 border border-white/40 bg-gray-900 text-gray-300">
+              ⚔️ 討伐数順
+            </button>
+            <button onclick="setLeaderboardCategory('gold')" id="cat-gold" class="dq-btn px-3 py-1.5 border border-white/40 bg-gray-900 text-gray-300">
+              🪙 所持金順
+            </button>
+          </div>
+          <span class="text-[11px] text-gray-400" id="leaderboardTotalCount">表示件数: 0名</span>
+        </div>
+
+        <!-- Leaderboard Main Container -->
+        <div id="leaderboardList" class="space-y-3">
+          <div class="text-center py-8 text-gray-400 text-xs">
+            世界勇者番付のデータを取得しています...
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 5: DEPLOYMENT & USER GUIDE ("ぼうけんの手引き") -->
+    <section id="tab-guide" class="hidden flex-col gap-4">
+      <div class="dq-window p-4 sm:p-6 space-y-4 text-xs leading-relaxed">
+        <h2 class="text-xl font-bold text-yellow-300 border-b border-white/40 pb-2 flex items-center gap-2">
+          <span>📖</span> ぼうけんの手引き（Firebase Hosting デプロイガイド）
+        </h2>
+
+        <p class="text-gray-200">
+          この単一HTMLファイルアプリを自前のFirebase Hosting環境へデプロイし、Google Authやリアルタイム世界ランキングを本格稼働させる手順です。
+        </p>
+
+        <div class="p-3 bg-gray-900 border border-white/30 space-y-2">
+          <h3 class="font-bold text-yellow-400 text-sm">ステップ1: Firebaseコンソールの準備</h3>
+          <ol class="list-decimal list-inside space-y-1 text-gray-300">
+            <li><a href="https://console.firebase.google.com/" target="_blank" class="text-cyan-400 underline">Firebase Console</a> にアクセスし新規プロジェクトを作成。</li>
+            <li>「Authentication」を選択し、ログインプロバイダで「Google」を有効化。</li>
+            <li>「Firestore Database」を作成し、テストモードまたは本番モードで開始。</li>
+          </ol>
+        </div>
+
+        <div class="p-3 bg-gray-900 border border-white/30 space-y-2">
+          <h3 class="font-bold text-yellow-400 text-sm">ステップ2: Firestore セキュリティルール設定</h3>
+          <p class="text-gray-300">Firestoreの「ルール」タブに以下を設定して公開してください：</p>
+          <pre class="bg-black p-2 text-emerald-400 border border-white/20 font-mono text-[10px] overflow-x-auto">
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /artifacts/{appId}/public/data/{document=**} {
+      allow read, write: if true;
+    }
+    match /artifacts/{appId}/users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+          </pre>
+        </div>
+
+        <div class="p-3 bg-gray-900 border border-white/30 space-y-2">
+          <h3 class="font-bold text-yellow-400 text-sm">ステップ3: ローカル＆GitHubからのデプロイコマンド</h3>
+          <pre class="bg-black p-2 text-yellow-300 border border-white/20 font-mono text-[10px]">
+# Firebase CLIのインストール
+npm install -g firebase-tools
+
+# ログインと初期化
+firebase login
+firebase init hosting
+
+# ビルドフォルダに index.html を配置しデプロイ
+firebase deploy --only hosting
+          </pre>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="w-full max-w-5xl mt-8 text-center text-xs text-gray-500 py-4 border-t border-gray-800">
+    <p>© 2026 ドラゴンクエスト風 農業マスター - 肥料計算＆農家の大冒険RPG</p>
+  </footer>
+
+  <!-- Firebase v11.6.1 Standard CDN Import Modules -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Global Environment Firebase Configuration Injection Safety
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'dq-farmer-rpg-default';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' 
+      ? JSON.parse(__firebase_config)
+      : {
+          apiKey: "AIzaSyDEx3p20ZeI9k9zAX3tSKLUfrjWK4pvYJ8",
+  authDomain: "asobiyou-de044.firebaseapp.com",
+  projectId: "asobiyou-de044",
+  storageBucket: "asobiyou-de044.firebasestorage.app",
+  messagingSenderId: "137178845228",
+  appId: "1:137178845228:web:977a1aa81f099ab466c189"
+        };
+
+    // Firebase Core Initialization
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Make references available to window for legacy inline handlers safely
+    window.appId = appId;
+    window.auth = auth;
+    window.db = db;
+    window.doc = doc;
+    window.setDoc = setDoc;
+    window.getDoc = getDoc;
+    window.collection = collection;
+    window.addDoc = addDoc;
+    window.getDocs = getDocs;
+    window.onSnapshot = onSnapshot;
+
+    // Authentication Setup & Handler
+    window.currentUser = null;
+
+    async function initAuth() {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (e) {
+        console.warn("Auth initialization fallback to anonymous", e);
+      }
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      window.currentUser = user;
+      if (user) {
+        document.getElementById('authGate').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        document.getElementById('mainApp').classList.add('flex');
+        
+        const displayName = user.displayName || (user.isAnonymous ? 'ゲスト勇者' : '農家勇者');
+        document.getElementById('userName').innerText = displayName;
+        document.getElementById('userAvatar').innerText = displayName.charAt(0);
+        document.getElementById('authBtn').innerText = 'ログアウト';
+
+        const nameInput = document.getElementById('rankUserNameInput');
+        if (nameInput && !nameInput.value) {
+          nameInput.value = displayName;
+        }
+
+        // Load Initial User Data from Storage & World Leaderboard
+        loadUserHistory();
+        setupLeaderboardRealtimeListener();
+      } else {
+        document.getElementById('authGate').classList.remove('hidden');
+        document.getElementById('mainApp').classList.add('hidden');
+        document.getElementById('authBtn').innerText = 'ログイン';
+      }
+    });
+
+    window.loginWithGoogle = async function() {
+      playSfx('select');
+      try {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        console.error("Google Auth failed", err);
+        alertDQ("ログインエラー: ポップアップがブロックされた可能性があります。ゲストで開始してください。");
+      }
+    };
+
+    window.loginGuest = async function() {
+      playSfx('select');
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      } else {
+        document.getElementById('authGate').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        document.getElementById('mainApp').classList.add('flex');
+      }
+    };
+
+    window.handleAuthAction = async function() {
+      playSfx('select');
+      if (auth.currentUser && !auth.currentUser.isAnonymous) {
+        await signOut(auth);
+      } else {
+        window.loginWithGoogle();
+      }
+    };
+
+    initAuth();
+  </script>
+
+  <!-- Application Logic & Sound Synthesizer Script -->
+  <script>
+    /* ------------------------------------------------------------------
+       1. WEB AUDIO API - 8-BIT RETRO SOUND EFFECT SYNTHESIZER (DQ STYLE)
+       ------------------------------------------------------------------ */
+    let audioCtx = null;
+    let soundEnabled = false;
+
+    function enableAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      soundEnabled = true;
+      document.getElementById('audioStartOverlay').classList.add('hidden');
+      playSfx('select');
+    }
+
+    function playSfx(type) {
+      if (!audioCtx || !soundEnabled) return;
+      try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'select') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(880, now);
+          osc.frequency.exponentialRampToValueAtTime(440, now + 0.08);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } 
+        else if (type === 'hit') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.exponentialRampToValueAtTime(60, now + 0.12);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.12);
+          osc.start(now);
+          osc.stop(now + 0.12);
+        }
+        else if (type === 'heroHit') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        }
+        else if (type === 'heal') {
+          const notes = [440, 554.37, 659.25, 880];
+          notes.forEach((freq, idx) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = 'sine';
+            o.frequency.setValueAtTime(freq, now + (idx * 0.06));
+            g.gain.setValueAtTime(0.2, now + (idx * 0.06));
+            g.gain.linearRampToValueAtTime(0.01, now + (idx * 0.06) + 0.1);
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.start(now + (idx * 0.06));
+            o.stop(now + (idx * 0.06) + 0.1);
+          });
+        }
+        else if (type === 'critical') {
+          const notes = [523.25, 659.25, 783.99, 1046.50];
+          notes.forEach((freq, idx) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = 'square';
+            o.frequency.setValueAtTime(freq, now + (idx * 0.04));
+            g.gain.setValueAtTime(0.2, now + (idx * 0.04));
+            g.gain.linearRampToValueAtTime(0.01, now + (idx * 0.04) + 0.08);
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.start(now + (idx * 0.04));
+            o.stop(now + (idx * 0.04) + 0.08);
+          });
+          flashScreen();
+        }
+        else if (type === 'fanfare') {
+          const notes = [523.25, 523.25, 523.25, 659.25, 783.99, 1046.50];
+          const durations = [0.1, 0.1, 0.1, 0.2, 0.2, 0.5];
+          let timeOffset = 0;
+          notes.forEach((freq, idx) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = 'square';
+            o.frequency.setValueAtTime(freq, now + timeOffset);
+            g.gain.setValueAtTime(0.2, now + timeOffset);
+            g.gain.linearRampToValueAtTime(0.01, now + timeOffset + durations[idx]);
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.start(now + timeOffset);
+            o.stop(now + timeOffset + durations[idx]);
+            timeOffset += durations[idx] + 0.03;
+          });
+          flashScreen();
+        }
+        else if (type === 'kokusen') {
+          const osc1 = audioCtx.createOscillator();
+          const g1 = audioCtx.createGain();
+          osc1.type = 'sawtooth';
+          osc1.frequency.setValueAtTime(110, now);
+          osc1.frequency.exponentialRampToValueAtTime(25, now + 0.35);
+          g1.gain.setValueAtTime(0.4, now);
+          g1.gain.linearRampToValueAtTime(0.01, now + 0.35);
+          osc1.connect(g1);
+          g1.connect(audioCtx.destination);
+          osc1.start(now);
+          osc1.stop(now + 0.35);
+
+          const arcOsc = audioCtx.createOscillator();
+          const arcGain = audioCtx.createGain();
+          arcOsc.type = 'square';
+          arcOsc.frequency.setValueAtTime(1200, now + 0.05);
+          arcOsc.frequency.exponentialRampToValueAtTime(80, now + 0.3);
+          arcGain.gain.setValueAtTime(0.3, now + 0.05);
+          arcGain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+          arcOsc.connect(arcGain);
+          arcGain.connect(audioCtx.destination);
+          arcOsc.start(now + 0.05);
+          arcOsc.stop(now + 0.3);
+
+          triggerKokusenFlash();
+        }
+        else if (type === 'defeat') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.linearRampToValueAtTime(80, now + 0.6);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+          osc.start(now);
+          osc.stop(now + 0.6);
+        }
+      } catch (e) {
+        console.warn("Audio play error", e);
+      }
+    }
+
+    function flashScreen() {
+      const overlay = document.getElementById('flashOverlay');
+      overlay.classList.add('flash-active');
+      setTimeout(() => overlay.classList.remove('flash-active'), 250);
+    }
+
+    function triggerKokusenFlash() {
+      const overlay = document.getElementById('flashOverlay');
+      overlay.classList.add('kokusen-active');
+      setTimeout(() => overlay.classList.remove('kokusen-active'), 400);
+    }
+
+    function triggerHeroShake() {
+      const bWin = document.getElementById('battleWindow');
+      if (bWin) {
+        bWin.classList.add('shake-screen');
+        setTimeout(() => bWin.classList.remove('shake-screen'), 350);
+      }
+    }
+
+    function alertDQ(msg) {
+      playSfx('select');
+      const battleLog = document.getElementById('battleLog');
+      if (battleLog) {
+        battleLog.innerHTML = `<span class="text-yellow-300">【おしらせ】</span> ${msg}`;
+      } else {
+        console.log(msg);
+      }
+    }
+
+    /* ------------------------------------------------------------------
+       2. TAB NAVIGATION SYSTEM
+       ------------------------------------------------------------------ */
+    function switchTab(tabId) {
+      playSfx('select');
+      ['rpg', 'calc', 'history', 'ranking', 'guide'].forEach(id => {
+        const el = document.getElementById(`tab-${id}`);
+        const nav = document.getElementById(`nav-${id}`);
+        if (id === tabId) {
+          el.classList.remove('hidden');
+          el.classList.add('flex');
+          if (nav) nav.classList.add('active', 'border-yellow-400');
+        } else {
+          el.classList.add('hidden');
+          el.classList.remove('flex');
+          if (nav) nav.classList.remove('active', 'border-yellow-400');
+        }
+      });
+
+      if (tabId === 'ranking') {
+        renderLeaderboardUI();
+      }
+    }
+
+    /* ------------------------------------------------------------------
+       3. DRAGON QUEST TURN-BASED RPG GAME LOGIC
+       ------------------------------------------------------------------ */
+    const RPG_STATE = {
+      level: 1,
+      exp: 0,
+      nextExp: 100,
+      gold: 0,
+      stage: 1,
+      maxStage: 1,
+      kills: 0,
+      curHp: 100,
+      maxHp: 100,
+      curMp: 30,
+      maxMp: 30,
+      tapDamage: 18,
+      def: 6,
+      autoDps: 0,
+      baikiltTurns: 0,
+      zoneTurns: 0,
+      isTurnProcessing: false,
+      isDefending: false,
+      helpers: {
+        fairy: { count: 0, baseCost: 50, dps: 10 },
+        tractor: { count: 0, baseCost: 300, dps: 80 },
+        drone: { count: 0, baseCost: 2000, dps: 400 },
+        rocket: { count: 0, baseCost: 15000, dps: 2500 }
+      }
+    };
+
+    const MONSTERS = [
+      { name: "スライムキャベツ", baseHp: 140, atk: 14, def: 3, gold: 20, exp: 25, color: "#4ade80", shape: "slime", skill: "葉っぱカッター" },
+      { name: "ドラゴントマト", baseHp: 380, atk: 32, def: 8, gold: 65, exp: 75, color: "#f87171", shape: "dragon", skill: "激辛ブレス" },
+      { name: "マドゴーレム土", baseHp: 900, atk: 60, def: 22, gold: 200, exp: 220, color: "#a16207", shape: "golem", skill: "岩石落とし" },
+      { name: "キラーウリモー", baseHp: 2000, atk: 120, def: 40, gold: 500, exp: 550, color: "#2dd4bf", shape: "golem", skill: "突進突き" },
+      { name: "はぐれナスビ", baseHp: 500, atk: 90, def: 180, gold: 3500, exp: 4500, color: "#a855f7", shape: "slime", metal: true, skill: "マダンテの幼生" },
+      { name: "👑 キングカボチャ魔王", baseHp: 6500, atk: 240, def: 75, gold: 12000, exp: 15000, color: "#f97316", shape: "boss", isBoss: true, skill: "カボチャ大爆発" }
+    ];
+
+    let currentMonster = null;
+
+    function initMonster() {
+      const isBossStage = RPG_STATE.stage % 10 === 0;
+      let template = null;
+
+      if (isBossStage) {
+        template = MONSTERS.find(m => m.isBoss);
+      } else {
+        const normalMonsters = MONSTERS.filter(m => !m.isBoss);
+        const idx = Math.min(Math.floor((RPG_STATE.stage - 1) / 2) % normalMonsters.length, normalMonsters.length - 1);
+        template = normalMonsters[Math.random() < 0.2 ? Math.floor(Math.random() * normalMonsters.length) : idx];
+      }
+
+      const hpScale = Math.pow(1.35, RPG_STATE.stage - 1);
+      const atkScale = Math.pow(1.2, RPG_STATE.stage - 1);
+      const defScale = Math.pow(1.15, RPG_STATE.stage - 1);
+
+      const hp = Math.floor(template.baseHp * hpScale);
+
+      currentMonster = {
+        name: template.name,
+        curHp: hp,
+        maxHp: hp,
+        atk: Math.floor(template.atk * atkScale),
+        def: Math.floor(template.def * defScale),
+        gold: Math.floor(template.gold * hpScale),
+        exp: Math.floor(template.exp * hpScale),
+        color: template.color,
+        shape: template.shape,
+        metal: template.metal || false,
+        isBoss: template.isBoss || false,
+        skill: template.skill
+      };
+
+      RPG_STATE.isTurnProcessing = false;
+      RPG_STATE.isDefending = false;
+      updateMonsterUI();
+      updateHeroStatsUI();
+      drawMonsterCanvas();
+      updateTurnIndicator("⚔️ 勇者のターン");
+    }
+
+    function updateMonsterUI() {
+      document.getElementById('rpgStageDisplay').innerText = RPG_STATE.stage;
+      document.getElementById('stageNameDisplay').innerText = getStageName(RPG_STATE.stage);
+      document.getElementById('monsterName').innerText = currentMonster.name;
+      document.getElementById('monsterCurHp').innerText = currentMonster.curHp;
+      document.getElementById('monsterMaxHp').innerText = currentMonster.maxHp;
+      document.getElementById('monsterAtk').innerText = currentMonster.atk;
+      document.getElementById('monsterDef').innerText = currentMonster.def;
+
+      const pct = Math.max(0, Math.min(100, (currentMonster.curHp / currentMonster.maxHp) * 100));
+      document.getElementById('monsterHpBar').style.width = `${pct}%`;
+    }
+
+    function getStageName(stage) {
+      if (stage <= 5) return "始まりの農道";
+      if (stage <= 10) return "試練のビニールハウス";
+      if (stage <= 25) return "深緑の果樹園ダンジョン";
+      if (stage <= 50) return "荒野の巨大農地";
+      return "魔王ダイコンの最終決戦場";
+    }
+
+    function updateTurnIndicator(text, isEnemy = false) {
+      const ind = document.getElementById('turnIndicator');
+      if (ind) {
+        ind.innerText = text;
+        if (isEnemy) {
+          ind.className = "px-2 py-0.5 bg-red-950 border border-red-500 text-red-400 font-bold text-xs animate-pulse";
+        } else {
+          ind.className = "px-2 py-0.5 bg-yellow-950 border border-yellow-400 text-yellow-300 font-bold text-xs";
+        }
+      }
+
+      const buttons = document.querySelectorAll('#tab-rpg button:not(#authBtn)');
+      buttons.forEach(btn => {
+        btn.disabled = isEnemy || RPG_STATE.isTurnProcessing;
+      });
+    }
+
+    function drawMonsterCanvas(shake = false) {
+      const canvas = document.getElementById('monsterCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      if (shake) {
+        ctx.translate((Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14);
+      }
+
+      const color = currentMonster.color;
+
+      if (currentMonster.shape === 'slime') {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(100, 35);
+        ctx.bezierCurveTo(150, 35, 180, 85, 170, 145);
+        ctx.bezierCurveTo(160, 170, 40, 170, 30, 145);
+        ctx.bezierCurveTo(20, 85, 50, 35, 100, 35);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(72, 75, 14, 20);
+        ctx.fillRect(114, 75, 14, 20);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(78, 82, 7, 10);
+        ctx.fillRect(120, 82, 7, 10);
+
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(100, 115, 16, 0, Math.PI);
+        ctx.stroke();
+      } 
+      else if (currentMonster.shape === 'dragon') {
+        ctx.fillStyle = color;
+        ctx.fillRect(45, 55, 110, 100);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(45, 55, 110, 100);
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.moveTo(25, 75); ctx.lineTo(45, 55); ctx.lineTo(45, 95);
+        ctx.moveTo(175, 75); ctx.lineTo(155, 55); ctx.lineTo(155, 95);
+        ctx.fill();
+
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(62, 80, 20, 14);
+        ctx.fillRect(118, 80, 20, 14);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(72, 83, 8, 8);
+        ctx.fillRect(120, 83, 8, 8);
+      }
+      else {
+        ctx.fillStyle = color;
+        ctx.fillRect(35, 35, 130, 125);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 5;
+        ctx.strokeRect(35, 35, 130, 125);
+
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(70, 18, 60, 18);
+
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(55, 70, 26, 26);
+        ctx.fillRect(115, 70, 26, 26);
+      }
+
+      ctx.restore();
+    }
+
+    function executePlayerAttack() {
+      if (RPG_STATE.isTurnProcessing || !currentMonster) return;
+      RPG_STATE.isTurnProcessing = true;
+      RPG_STATE.isDefending = false;
+
+      let rawDamage = RPG_STATE.tapDamage;
+      if (RPG_STATE.baikiltTurns > 0) rawDamage *= 3;
+
+      const inZone = RPG_STATE.zoneTurns > 0;
+      const kokusenChance = inZone ? 0.65 : 0.08;
+      const isKokusen = Math.random() < kokusenChance;
+      const isCrit = !isKokusen && Math.random() < 0.15;
+
+      let finalDamage = Math.max(1, rawDamage - currentMonster.def);
+
+      if (isKokusen) {
+        finalDamage = Math.floor(rawDamage * 12);
+        RPG_STATE.zoneTurns = 3;
+        updateZoneUI();
+        playSfx('kokusen');
+        showFloatingDamage('monsterCanvas', finalDamage, true, true);
+        logBattle(`<span class="text-red-500 font-bold animate-pulse">⚡【黒閃命中！】空間が歪む！ ゾーン突入（3ターン維持）！</span> <span class="text-yellow-300 font-bold">${finalDamage}</span> の極大ダメージ！`);
+      } else if (isCrit) {
+        finalDamage = Math.floor(rawDamage * 3.5);
+        playSfx('critical');
+        showFloatingDamage('monsterCanvas', finalDamage, true, false);
+        logBattle(`<span class="text-yellow-300 font-bold">かいしんのいちげき！</span> モンスターの守備を破り <span class="text-yellow-300">${finalDamage}</span> のダメージ！`);
+      } else {
+        playSfx('hit');
+        showFloatingDamage('monsterCanvas', finalDamage, false, false);
+        logBattle(`勇者のこうげき！ <span class="text-yellow-300">${currentMonster.name}</span> に <span class="text-white">${finalDamage}</span> のダメージ！`);
+      }
+
+      if (currentMonster.metal && !isCrit && !isKokusen) {
+        finalDamage = 1;
+      }
+
+      applyHelperTurnDamage();
+      currentMonster.curHp = Math.max(0, currentMonster.curHp - finalDamage);
+      drawMonsterCanvas(true);
+      updateMonsterUI();
+
+      if (currentMonster.curHp <= 0) {
+        onMonsterDefeated();
+      } else {
+        scheduleEnemyTurn();
+      }
+    }
+
+    function executePlayerDefend() {
+      if (RPG_STATE.isTurnProcessing) return;
+      RPG_STATE.isTurnProcessing = true;
+      RPG_STATE.isDefending = true;
+
+      playSfx('select');
+      logBattle(`勇者は <span class="text-cyan-300 font-bold">身がまええた！</span> 次の魔物の攻撃ダメージを半減！`);
+      applyHelperTurnDamage();
+
+      if (currentMonster.curHp <= 0) {
+        onMonsterDefeated();
+      } else {
+        scheduleEnemyTurn();
+      }
+    }
+
+    function executePlayerHeal() {
+      if (RPG_STATE.isTurnProcessing) return;
+      if (RPG_STATE.curMp < 3) return alertDQ("MPが たりない！");
+      
+      RPG_STATE.isTurnProcessing = true;
+      RPG_STATE.isDefending = false;
+      RPG_STATE.curMp -= 3;
+
+      const healAmt = Math.floor(RPG_STATE.maxHp * 0.45) + 20;
+      RPG_STATE.curHp = Math.min(RPG_STATE.maxHp, RPG_STATE.curHp + healAmt);
+
+      playSfx('heal');
+      updateHeroStatsUI();
+      logBattle(`勇者は <span class="text-emerald-300 font-bold">薬草で傷を癒やした！</span> HPが <span class="text-emerald-400 font-bold">${healAmt}</span> 回復！`);
+
+      applyHelperTurnDamage();
+      if (currentMonster.curHp <= 0) {
+        onMonsterDefeated();
+      } else {
+        scheduleEnemyTurn();
+      }
+    }
+
+    function applyHelperTurnDamage() {
+      if (RPG_STATE.autoDps > 0 && currentMonster && currentMonster.curHp > 0) {
+        currentMonster.curHp = Math.max(0, currentMonster.curHp - RPG_STATE.autoDps);
+        logBattle(` 仲間たちの追撃！ <span class="text-emerald-300">${RPG_STATE.autoDps}</span> の追加ダメージ！`);
+      }
+    }
+
+    function scheduleEnemyTurn() {
+      updateTurnIndicator("👾 魔物のターン！", true);
+      setTimeout(() => {
+        executeEnemyTurn();
+      }, 700);
+    }
+
+    function executeEnemyTurn() {
+      if (!currentMonster || currentMonster.curHp <= 0) return;
+
+      if (RPG_STATE.baikiltTurns > 0) RPG_STATE.baikiltTurns--;
+      if (RPG_STATE.zoneTurns > 0) {
+        RPG_STATE.zoneTurns--;
+        updateZoneUI();
+      }
+
+      const isSkill = Math.random() < 0.3;
+      const isCrit = !isSkill && Math.random() < 0.15;
+
+      let rawAtk = currentMonster.atk;
+      let actionName = "こうげき";
+
+      if (isSkill) {
+        rawAtk = Math.floor(rawAtk * 1.6);
+        actionName = `特技【${currentMonster.skill}】`;
+      } else if (isCrit) {
+        rawAtk = Math.floor(rawAtk * 2.2);
+        actionName = "痛恨の一撃";
+      }
+
+      let dmg = Math.max(2, rawAtk - RPG_STATE.def);
+
+      if (RPG_STATE.isDefending) {
+        dmg = Math.max(1, Math.floor(dmg / 2));
+      }
+
+      RPG_STATE.curHp = Math.max(0, RPG_STATE.curHp - dmg);
+      updateHeroStatsUI();
+      triggerHeroShake();
+      playSfx('heroHit');
+
+      if (isCrit) {
+        logBattle(`<span class="text-red-400 font-bold">💥 モンスターの痛恨の一撃！</span> 勇者は <span class="text-red-500 font-bold">${dmg}</span> の大ダメージを受けた！`);
+      } else if (isSkill) {
+        logBattle(`<span class="text-orange-400 font-bold">🔥 ${currentMonster.name} の ${actionName}！</span> 勇者は <span class="text-red-400">${dmg}</span> のダメージを受けた！`);
+      } else {
+        logBattle(`${currentMonster.name} のこうげき！ 勇者は <span class="text-red-400">${dmg}</span> のダメージを受けた！`);
+      }
+
+      if (RPG_STATE.curHp <= 0) {
+        setTimeout(() => onHeroDefeated(), 500);
+      } else {
+        RPG_STATE.isTurnProcessing = false;
+        RPG_STATE.isDefending = false;
+        updateTurnIndicator("⚔️ 勇者のターン");
+      }
+    }
+
+    function onHeroDefeated() {
+      playSfx('defeat');
+
+      logBattle(`<span class="text-red-500 font-bold animate-pulse">💀 勇者は たおれてしまった...</span> 不思議な加護によりゴールドは維持された！`);
+
+      RPG_STATE.curHp = RPG_STATE.maxHp;
+      RPG_STATE.curMp = RPG_STATE.maxMp;
+      RPG_STATE.stage = Math.max(1, RPG_STATE.stage - 1);
+
+      setTimeout(() => {
+        alertDQ("教会で生き返った！ 再び冒険へ出発します！");
+        initMonster();
+      }, 1500);
+    }
+
+    function useSkill(skillKey) {
+      if (RPG_STATE.isTurnProcessing) return;
+
+      if (skillKey === 'baikilt') {
+        if (RPG_STATE.curMp < 3) return alertDQ("MPが たりない！");
+        RPG_STATE.curMp -= 3;
+        RPG_STATE.baikiltTurns = 3;
+        RPG_STATE.isTurnProcessing = true;
+        playSfx('select');
+        logBattle(`じゅもん <span class="text-yellow-300 font-bold">バイキルト</span> をとなえた！ 3ターン間 攻撃力が3倍！`);
+        applyHelperTurnDamage();
+        scheduleEnemyTurn();
+      }
+      else if (skillKey === 'melazoma') {
+        if (RPG_STATE.curMp < 5) return alertDQ("MPが たりない！");
+        RPG_STATE.curMp -= 5;
+        RPG_STATE.isTurnProcessing = true;
+        playSfx('critical');
+        const dmg = Math.floor(RPG_STATE.tapDamage * 15);
+        currentMonster.curHp = Math.max(0, currentMonster.curHp - dmg);
+        drawMonsterCanvas(true);
+        updateMonsterUI();
+        logBattle(`じゅもん <span class="text-red-400 font-bold">メラゾーマ</span>！ 巨大な火の玉が襲いかかる！ <span class="text-yellow-300 font-bold">${dmg}</span> の大ダメージ！`);
+        applyHelperTurnDamage();
+        if (currentMonster.curHp <= 0) onMonsterDefeated(); else scheduleEnemyTurn();
+      }
+      else if (skillKey === 'parpunte') {
+        if (RPG_STATE.curMp < 4) return alertDQ("MPが たりない！");
+        RPG_STATE.curMp -= 4;
+        RPG_STATE.isTurnProcessing = true;
+        playSfx('select');
+        const rand = Math.random();
+        if (rand < 0.35) {
+          const goldBonus = RPG_STATE.level * 600;
+          RPG_STATE.gold += goldBonus;
+          logBattle(`パルプンテ！ <span class="text-yellow-400 font-bold">なんと ${goldBonus} G を手に入れた！</span>`);
+        } else if (rand < 0.7) {
+          currentMonster.curHp = 0;
+          updateMonsterUI();
+          logBattle(`パルプンテ！ <span class="text-purple-400 font-bold">恐ろしい呪文が魔物を打ち砕いた！ (即死)</span>`);
+        } else {
+          RPG_STATE.curMp = RPG_STATE.maxMp;
+          logBattle(`パルプンテ！ <span class="text-emerald-400 font-bold">不思議な光が包み込み MPが全回復した！</span>`);
+        }
+        applyHelperTurnDamage();
+        if (currentMonster.curHp <= 0) onMonsterDefeated(); else scheduleEnemyTurn();
+      }
+      else if (skillKey === 'madante') {
+        if (RPG_STATE.curMp < 15) return alertDQ("MPが たりない！ (必要:15)");
+        RPG_STATE.curMp -= 15;
+        RPG_STATE.isTurnProcessing = true;
+        playSfx('critical');
+        flashScreen();
+        const dmg = Math.floor(RPG_STATE.tapDamage * 45);
+        currentMonster.curHp = Math.max(0, currentMonster.curHp - dmg);
+        drawMonsterCanvas(true);
+        updateMonsterUI();
+        logBattle(`究極じゅもん <span class="text-pink-400 font-bold">マダンテ</span>！！ 全魔力を放ち <span class="text-yellow-300 font-bold">${dmg}</span> の究極爆発ダメージ！`);
+        applyHelperTurnDamage();
+        if (currentMonster.curHp <= 0) onMonsterDefeated(); else scheduleEnemyTurn();
+      }
+      else if (skillKey === 'avadakedavra') {
+        if (RPG_STATE.curMp < 8) return alertDQ("MPが たりない！");
+        RPG_STATE.curMp -= 8;
+        RPG_STATE.isTurnProcessing = true;
+        playSfx('critical');
+        flashScreen();
+        if (Math.random() < 0.8) {
+          currentMonster.curHp = 0;
+          updateMonsterUI();
+          logBattle(`禁術 <span class="text-emerald-400 font-bold">アバダケダブラ</span>！！ 命を奪う緑の閃光線が直撃！（即死）`);
+        } else {
+          const backfireDmg = Math.floor(currentMonster.maxHp * 0.2);
+          currentMonster.curHp = Math.max(1, currentMonster.curHp - backfireDmg);
+          updateMonsterUI();
+          logBattle(`禁術 <span class="text-emerald-400 font-bold">アバダケダブラ</span>！ わずかに擦れ <span class="text-yellow-300">${backfireDmg}</span> のダメージ！`);
+        }
+        applyHelperTurnDamage();
+        if (currentMonster.curHp <= 0) onMonsterDefeated(); else scheduleEnemyTurn();
+      }
+      else if (skillKey === 'kokusen') {
+        if (RPG_STATE.curMp < 4) return alertDQ("MPが たりない！");
+        RPG_STATE.curMp -= 4;
+        RPG_STATE.isTurnProcessing = true;
+        RPG_STATE.zoneTurns = 3;
+        updateZoneUI();
+        playSfx('kokusen');
+        const dmg = Math.floor(RPG_STATE.tapDamage * 20);
+        currentMonster.curHp = Math.max(0, currentMonster.curHp - dmg);
+        drawMonsterCanvas(true);
+        updateMonsterUI();
+        logBattle(`<span class="text-red-500 font-bold animate-pulse">⚡【黒閃】空間の歪みが臨界点突破！ 3ターンゾーン突入！</span> <span class="text-yellow-300 font-bold">${dmg}</span> の極大打撃！`);
+        applyHelperTurnDamage();
+        if (currentMonster.curHp <= 0) onMonsterDefeated(); else scheduleEnemyTurn();
+      }
+      else if (skillKey === 'keiteiken') {
+        if (RPG_STATE.curMp < 3) return alertDQ("MPが たりない！");
+        RPG_STATE.curMp -= 3;
+        RPG_STATE.isTurnProcessing = true;
+        playSfx('hit');
+        const hit1 = Math.floor(RPG_STATE.tapDamage * 6);
+        currentMonster.curHp = Math.max(0, currentMonster.curHp - hit1);
+        updateMonsterUI();
+        drawMonsterCanvas(true);
+        logBattle(`体術 <span class="text-orange-400 font-bold">逕庭拳</span>！ 第1打 <span class="text-yellow-300">${hit1}</span> ダメージ！`);
+        
+        setTimeout(() => {
+          if (currentMonster && currentMonster.curHp > 0) {
+            playSfx('critical');
+            const hit2 = Math.floor(RPG_STATE.tapDamage * 14);
+            currentMonster.curHp = Math.max(0, currentMonster.curHp - hit2);
+            updateMonsterUI();
+            drawMonsterCanvas(true);
+            logBattle(`👊 <span class="text-orange-500 font-bold">逕庭拳の遅れてきた呪力打撃！</span> 追撃 <span class="text-yellow-300 font-bold">${hit2}</span>！`);
+            applyHelperTurnDamage();
+            if (currentMonster.curHp <= 0) onMonsterDefeated(); else scheduleEnemyTurn();
+          }
+        }, 350);
+      }
+      else if (skillKey === 'shakkondo') {
+        if (RPG_STATE.curMp < 5) return alertDQ("MPが足りません");
+        RPG_STATE.curMp -= 5;
+        RPG_STATE.isTurnProcessing = true;
+        playSfx('critical');
+        flashScreen();
+        const dmg = Math.floor(RPG_STATE.tapDamage * 18);
+        currentMonster.curHp = Math.max(0, currentMonster.curHp - dmg);
+        drawMonsterCanvas(true);
+        updateMonsterUI();
+        logBattle(`特級呪具 <span class="text-purple-400 font-bold">釈魂刀</span>！ 物質の硬さを無視し【魂】を直接切断！ <span class="text-yellow-300 font-bold">${dmg}</span> の貫通ダメージ！`);
+        applyHelperTurnDamage();
+        if (currentMonster.curHp <= 0) onMonsterDefeated(); else scheduleEnemyTurn();
+      }
+      else if (skillKey === 'amanosakahoko') {
+        if (RPG_STATE.curMp < 4) return alertDQ("MPが たりない！");
+        RPG_STATE.curMp -= 4;
+        RPG_STATE.isTurnProcessing = true;
+        playSfx('hit');
+        const dmg = Math.floor(RPG_STATE.tapDamage * 12);
+        currentMonster.curHp = Math.max(0, currentMonster.curHp - dmg);
+        drawMonsterCanvas(true);
+        updateMonsterUI();
+        logBattle(`特級呪具 <span class="text-cyan-400 font-bold">天逆鉾</span>！ 術式を強制解除！ <span class="text-yellow-300 font-bold">${dmg}</span> の解呪ダメージ！`);
+        applyHelperTurnDamage();
+        if (currentMonster.curHp <= 0) onMonsterDefeated(); else scheduleEnemyTurn();
+      }
+      updateHeroStatsUI();
+    }
+
+    function updateZoneUI() {
+      const badge = document.getElementById('zoneBadge');
+      const battleWin = document.getElementById('battleWindow');
+
+      if (RPG_STATE.zoneTurns > 0) {
+        if (badge) {
+          badge.classList.remove('hidden');
+          document.getElementById('zoneTimerDisplay').innerText = RPG_STATE.zoneTurns;
+        }
+        if (battleWin) battleWin.classList.add('zone-aura');
+      } else {
+        if (badge) badge.classList.add('hidden');
+        if (battleWin) battleWin.classList.remove('zone-aura');
+      }
+    }
+
+    function showFloatingDamage(targetId, amount, isCrit, isKokusen = false) {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      const pop = document.createElement('div');
+      if (isKokusen) {
+        pop.className = 'damage-pop text-red-500 text-2xl font-black drop-shadow-[0_0_8px_rgba(255,0,0,0.9)] animate-bounce';
+        pop.innerText = `⚡黒閃 ${amount}!!`;
+      } else {
+        pop.className = `damage-pop ${isCrit ? 'text-yellow-300 text-xl' : 'text-white text-base'}`;
+        pop.innerText = isCrit ? `💥 ${amount}!!` : `-${amount}`;
+      }
+      
+      const rect = target.getBoundingClientRect();
+      pop.style.left = `${rect.left + rect.width / 2 - 20}px`;
+      pop.style.top = `${rect.top + rect.height / 2 - 20}px`;
+
+      document.body.appendChild(pop);
+      setTimeout(() => pop.remove(), 800);
+    }
+
+    function onMonsterDefeated() {
+      playSfx('select');
+      RPG_STATE.gold += currentMonster.gold;
+      RPG_STATE.exp += currentMonster.exp;
+      RPG_STATE.kills++;
+
+      logBattle(`<span class="text-yellow-300">${currentMonster.name}</span> を たおした！ <span class="text-yellow-400">${currentMonster.gold} G</span> と <span class="text-blue-400">${currentMonster.exp} EXP</span> をかくとく！`);
+
+      checkLevelUp();
+      RPG_STATE.stage++;
+      RPG_STATE.maxStage = Math.max(RPG_STATE.maxStage, RPG_STATE.stage);
+
+      setTimeout(() => {
+        initMonster();
+      }, 1200);
+    }
+
+    function checkLevelUp() {
+      if (RPG_STATE.exp >= RPG_STATE.nextExp) {
+        RPG_STATE.level++;
+        RPG_STATE.exp -= RPG_STATE.nextExp;
+        RPG_STATE.nextExp = Math.floor(RPG_STATE.nextExp * 1.5);
+        RPG_STATE.maxHp += 25;
+        RPG_STATE.curHp = RPG_STATE.maxHp;
+        RPG_STATE.maxMp += 8;
+        RPG_STATE.curMp = RPG_STATE.maxMp;
+        RPG_STATE.tapDamage += 8;
+        RPG_STATE.def += 3;
+
+        playSfx('critical');
+        logBattle(`<span class="text-yellow-300 font-bold">✨ LEVEL UP！ Lv.${RPG_STATE.level} になった！ 全ステータス上昇！</span>`);
+      }
+    }
+
+    function buyHelper(key) {
+      const helper = RPG_STATE.helpers[key];
+      const cost = Math.floor(helper.baseCost * Math.pow(1.2, helper.count));
+
+      if (RPG_STATE.gold >= cost) {
+        playSfx('select');
+        RPG_STATE.gold -= cost;
+        helper.count++;
+        recalcAutoDps();
+        updateHeroStatsUI();
+      } else {
+        alertDQ("ゴールドが たりない！");
+      }
+    }
+
+    function recalcAutoDps() {
+      let dps = 0;
+      for (const k in RPG_STATE.helpers) {
+        dps += RPG_STATE.helpers[k].count * RPG_STATE.helpers[k].dps;
+      }
+      RPG_STATE.autoDps = dps;
+    }
+
+    function updateHeroStatsUI() {
+      document.getElementById('headerLv').innerText = RPG_STATE.level;
+      document.getElementById('headerGold').innerText = RPG_STATE.gold.toLocaleString();
+      document.getElementById('battleHeroLv').innerText = RPG_STATE.level;
+      document.getElementById('heroCurHp').innerText = RPG_STATE.curHp;
+      document.getElementById('heroMaxHp').innerText = RPG_STATE.maxHp;
+      document.getElementById('heroCurMp').innerText = RPG_STATE.curMp;
+      document.getElementById('heroMaxMp').innerText = RPG_STATE.maxMp;
+
+      const heroHpPct = Math.max(0, Math.min(100, (RPG_STATE.curHp / RPG_STATE.maxHp) * 100));
+      document.getElementById('heroHpBar').style.width = `${heroHpPct}%`;
+
+      const heroMpPct = Math.max(0, Math.min(100, (RPG_STATE.curMp / RPG_STATE.maxMp) * 100));
+      document.getElementById('heroMpBar').style.width = `${heroMpPct}%`;
+
+      document.getElementById('statLevel').innerText = RPG_STATE.level;
+      document.getElementById('statExp').innerText = RPG_STATE.exp;
+      document.getElementById('statNextExp').innerText = RPG_STATE.nextExp;
+      document.getElementById('statGold').innerText = RPG_STATE.gold.toLocaleString();
+      document.getElementById('statAutoDps').innerText = RPG_STATE.autoDps;
+      document.getElementById('statKills').innerText = RPG_STATE.kills;
+      document.getElementById('rpgTapDmg').innerText = RPG_STATE.tapDamage * (RPG_STATE.baikiltTurns > 0 ? 3 : 1);
+      document.getElementById('rpgDef').innerText = RPG_STATE.def;
+
+      const expPct = Math.min(100, (RPG_STATE.exp / RPG_STATE.nextExp) * 100);
+      document.getElementById('expBar').style.width = `${expPct}%`;
+
+      for (const k in RPG_STATE.helpers) {
+        const helper = RPG_STATE.helpers[k];
+        const cost = Math.floor(helper.baseCost * Math.pow(1.2, helper.count));
+        document.getElementById(`count-${k}`).innerText = helper.count;
+        document.getElementById(`cost-${k}`).innerText = cost;
+      }
+
+      // Update My Stats in World Ranking Tab
+      const myStatStage = document.getElementById('myStatStage');
+      if (myStatStage) myStatStage.innerText = `第 ${RPG_STATE.maxStage} 階層`;
+      const myStatLv = document.getElementById('myStatLv');
+      if (myStatLv) myStatLv.innerText = `Lv.${RPG_STATE.level}`;
+      const myStatKills = document.getElementById('myStatKills');
+      if (myStatKills) myStatKills.innerText = `${RPG_STATE.kills} 匹`;
+      const myStatGold = document.getElementById('myStatGold');
+      if (myStatGold) myStatGold.innerText = `${RPG_STATE.gold.toLocaleString()} G`;
+    }
+
+    function logBattle(htmlMsg) {
+      const log = document.getElementById('battleLog');
+      if (log) {
+        log.innerHTML = htmlMsg;
+      }
+    }
+
+    /* ------------------------------------------------------------------
+       4. DQ FERTILIZER CALCULATOR LOGIC & SMART OPTIMIZER
+       ------------------------------------------------------------------ */
+    const FERTILIZER_DATABASE = [
+      { id: 'koudo', name: '高度化成 (14-14-14)', n: 14, p: 14, k: 14 },
+      { id: 'ryuka', name: '硫加燐硝安 (15-15-15)', n: 15, p: 15, k: 15 },
+      { id: 'nyoso', name: '尿素 (46-0-0)', n: 46, p: 0, k: 0 },
+      { id: 'kaseki', name: '過燐酸石灰 (0-20-0)', n: 0, p: 20, k: 0 },
+      { id: 'ryukai', name: '硫酸加里 (0-0-50)', n: 0, p: 0, k: 50 },
+      { id: 'keifun', name: '発酵鶏ふん (3.0-5.0-2.0)', n: 3.0, p: 5.0, k: 2.0 },
+      { id: 'gyufun', name: '牛ふんたいひ (1.5-1.5-1.0)', n: 1.5, p: 1.5, k: 1.0 }
+    ];
+
+    const CROP_PRESETS = {
+      tomato: { n: 15, p: 20, k: 18 },
+      cucumber: { n: 20, p: 18, k: 22 },
+      eggplant: { n: 22, p: 18, k: 22 },
+      spinach: { n: 12, p: 15, k: 12 },
+      cabbage: { n: 25, p: 20, k: 20 },
+      onion: { n: 20, p: 15, k: 20 },
+      rice: { n: 8, p: 8, k: 8 }
+    };
+
+    let userFertilizerInputs = {};
+
+    function initFertilizerInputsUI() {
+      const container = document.getElementById('fertilizerInputsContainer');
+      container.innerHTML = '';
+
+      FERTILIZER_DATABASE.forEach(fert => {
+        if (userFertilizerInputs[fert.id] === undefined) {
+          userFertilizerInputs[fert.id] = 0;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'p-2 border border-white/20 bg-black flex items-center justify-between gap-2';
+        div.innerHTML = `
+          <div class="flex-1">
+            <div class="font-bold text-yellow-300 text-xs">${fert.name}</div>
+            <div class="text-[10px] text-gray-400">成分比: N:${fert.n}% / P:${fert.p}% / K:${fert.k}%</div>
+          </div>
+          <div class="flex items-center gap-1">
+            <input type="number" id="fert_input_${fert.id}" value="${userFertilizerInputs[fert.id]}" min="0" step="1" onchange="onFertilizerAmountChange('${fert.id}')" class="w-20 bg-gray-900 border border-white p-1 text-right text-white font-mono">
+            <span class="text-gray-300 text-xs">kg</span>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function onFertilizerAmountChange(id) {
+      const val = parseFloat(document.getElementById(`fert_input_${id}`).value) || 0;
+      userFertilizerInputs[id] = Math.max(0, val);
+      recalculateFertilizer();
+    }
+
+    function applyCropPreset() {
+      playSfx('select');
+      const val = document.getElementById('cropPresetSelect').value;
+      if (val in CROP_PRESETS) {
+        document.getElementById('targetN').value = CROP_PRESETS[val].n;
+        document.getElementById('targetP').value = CROP_PRESETS[val].p;
+        document.getElementById('targetK').value = CROP_PRESETS[val].k;
+        recalculateFertilizer();
+      }
+    }
+
+    function getAreaFactor10a() {
+      const val = parseFloat(document.getElementById('calcAreaInput').value) || 10;
+      const unit = document.getElementById('calcUnitSelect').value;
+      
+      if (unit === '10a') return val;
+      if (unit === 'm2') return val / 1000.0;
+      if (unit === 'tsubo') return (val * 3.30578) / 1000.0;
+      if (unit === 'tan') return (val * 991.735) / 1000.0;
+      return 1.0;
+    }
+
+    function recalculateFertilizer() {
+      const areaFactor = getAreaFactor10a();
+      const targetN_10a = parseFloat(document.getElementById('targetN').value) || 0;
+      const targetP_10a = parseFloat(document.getElementById('targetP').value) || 0;
+      const targetK_10a = parseFloat(document.getElementById('targetK').value) || 0;
+
+      const totalTargetN = targetN_10a * areaFactor;
+      const totalTargetP = targetP_10a * areaFactor;
+      const totalTargetK = targetK_10a * areaFactor;
+
+      let currentN = 0, currentP = 0, currentK = 0;
+
+      FERTILIZER_DATABASE.forEach(fert => {
+        const qty = userFertilizerInputs[fert.id] || 0;
+        currentN += qty * (fert.n / 100.0);
+        currentP += qty * (fert.p / 100.0);
+        currentK += qty * (fert.k / 100.0);
+      });
+
+      document.getElementById('targetNVal').innerText = totalTargetN.toFixed(1);
+      document.getElementById('targetPVal').innerText = totalTargetP.toFixed(1);
+      document.getElementById('targetKVal').innerText = totalTargetK.toFixed(1);
+
+      document.getElementById('currentNVal').innerText = currentN.toFixed(1);
+      document.getElementById('currentPVal').innerText = currentP.toFixed(1);
+      document.getElementById('currentKVal').innerText = currentK.toFixed(1);
+
+      updateGauge('n', currentN, totalTargetN, 'nBar', 'nStatusTag');
+      updateGauge('p', currentP, totalTargetP, 'pBar', 'pStatusTag');
+      updateGauge('k', currentK, totalTargetK, 'kBar', 'kStatusTag');
+    }
+
+    function updateGauge(type, current, target, barId, tagId) {
+      const pct = target > 0 ? Math.min(150, (current / target) * 100) : 0;
+      const bar = document.getElementById(barId);
+      const tag = document.getElementById(tagId);
+
+      bar.style.width = `${Math.min(100, pct)}%`;
+
+      if (pct < 85) {
+        tag.innerText = "不足";
+        tag.className = "text-yellow-400 font-bold";
+        bar.className = "dq-bar-fill bg-yellow-500 h-full";
+      } else if (pct <= 115) {
+        tag.innerText = "適量 (バッチリ)";
+        tag.className = "text-emerald-400 font-bold";
+        bar.className = "dq-bar-fill bg-emerald-500 h-full";
+      } else {
+        tag.innerText = "過剰";
+        tag.className = "text-red-400 font-bold";
+        bar.className = "dq-bar-fill bg-red-600 h-full";
+      }
+    }
+
+    function autoOptimizeFertilizer() {
+      playSfx('select');
+      const areaFactor = getAreaFactor10a();
+      const targetN = (parseFloat(document.getElementById('targetN').value) || 0) * areaFactor;
+      const targetP = (parseFloat(document.getElementById('targetP').value) || 0) * areaFactor;
+      const targetK = (parseFloat(document.getElementById('targetK').value) || 0) * areaFactor;
+
+      const minNeed = Math.min(targetN, targetP, targetK);
+      const koudoQty = (minNeed / 0.14);
+
+      const remN = Math.max(0, targetN - (koudoQty * 0.14));
+      const remP = Math.max(0, targetP - (koudoQty * 0.14));
+      const remK = Math.max(0, targetK - (koudoQty * 0.14));
+
+      const nyosoQty = remN / 0.46;
+      const kasekiQty = remP / 0.20;
+      const ryukaiQty = remK / 0.50;
+
+      userFertilizerInputs['koudo'] = Math.round(koudoQty);
+      userFertilizerInputs['nyoso'] = Math.round(nyosoQty);
+      userFertilizerInputs['kaseki'] = Math.round(kasekiQty);
+      userFertilizerInputs['ryukai'] = Math.round(ryukaiQty);
+      userFertilizerInputs['keifun'] = 0;
+      userFertilizerInputs['gyufun'] = 0;
+
+      initFertilizerInputsUI();
+      recalculateFertilizer();
+
+      alertDQ("⚡ ガンガンいこうぜ！ 自動施肥調整が完了しました！");
+    }
+
+    /* ------------------------------------------------------------------
+       5. FIRESTORE DATABASE HISTORY SAVING
+       ------------------------------------------------------------------ */
+    async function saveCalculationToFirestore() {
+      if (!window.currentUser) return alertDQ("ログインしてから保存してください。");
+      playSfx('select');
+
+      const cropName = document.getElementById('cropPresetSelect').selectedOptions[0].text;
+      const areaVal = document.getElementById('calcAreaInput').value;
+      const unitVal = document.getElementById('calcUnitSelect').value;
+
+      const record = {
+        crop: cropName,
+        area: `${areaVal} ${unitVal}`,
+        targetN: document.getElementById('targetN').value,
+        targetP: document.getElementById('targetP').value,
+        targetK: document.getElementById('targetK').value,
+        inputs: { ...userFertilizerInputs },
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        const colRef = window.collection(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'fertilizer_history');
+        await window.addDoc(colRef, record);
+        alertDQ("📜 施肥記録を「ぼうけんの記録」へ保存しました！");
+        loadUserHistory();
+      } catch (err) {
+        console.error("Save history error", err);
+        alertDQ("保存中にエラーが発生しました。");
+      }
+    }
+
+    async function loadUserHistory() {
+      if (!window.currentUser) return;
+      const container = document.getElementById('historyListContainer');
+      container.innerHTML = '<div class="text-center py-4 text-gray-400">記録を取得中...</div>';
+
+      try {
+        const colRef = window.collection(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'fertilizer_history');
+        const snap = await window.getDocs(colRef);
+
+        if (snap.empty) {
+          container.innerHTML = '<div class="text-center py-6 text-gray-400">保存された施肥計算の記録はありません。</div>';
+          return;
+        }
+
+        container.innerHTML = '';
+        snap.forEach(docSnap => {
+          const data = docSnap.data();
+          const div = document.createElement('div');
+          div.className = 'p-3 border border-white/30 bg-black/80 flex flex-wrap justify-between items-center gap-2 text-xs';
+          div.innerHTML = `
+            <div>
+              <div class="font-bold text-yellow-300 text-sm">${data.crop} (${data.area})</div>
+              <div class="text-gray-400 text-[10px]">保存日: ${new Date(data.createdAt).toLocaleString()}</div>
+              <div class="text-emerald-400 mt-1">目標: N:${data.targetN} / P:${data.targetP} / K:${data.targetK} kg/10a</div>
+            </div>
+            <button onclick='loadHistoryItemToCalc(${JSON.stringify(data.inputs)})' class="dq-btn bg-yellow-900 border border-white text-white px-3 py-1 font-bold hover:bg-yellow-700">
+              ⚡ 配合を復元
+            </button>
+          `;
+          container.appendChild(div);
+        });
+      } catch (err) {
+        console.error("Load history error", err);
+        container.innerHTML = '<div class="text-center py-4 text-red-400">履歴の取得に失敗しました。</div>';
+      }
+    }
+
+    window.loadHistoryItemToCalc = function(inputsObj) {
+      playSfx('select');
+      userFertilizerInputs = { ...inputsObj };
+      initFertilizerInputsUI();
+      recalculateFertilizer();
+      switchTab('calc');
+      alertDQ("選択した配合データを復元しました！");
+    };
+
+    window.exportCurrentCalcCSV = function() {
+      playSfx('select');
+      let csvContent = "data:text/csv;charset=utf-8,肥料名,投入量(kg)\n";
+      FERTILIZER_DATABASE.forEach(fert => {
+        const qty = userFertilizerInputs[fert.id] || 0;
+        csvContent += `${fert.name},${qty}\n`;
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "fertilizer_plan.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    /* ------------------------------------------------------------------
+       6. GLOBAL LEADERBOARD & REALTIME FIRESTORE SYNC
+       ------------------------------------------------------------------ */
+    let currentLeaderboardCategory = 'stage';
+    let localLeaderboardData = [];
+
+    function setLeaderboardCategory(cat) {
+      playSfx('select');
+      currentLeaderboardCategory = cat;
+      ['stage', 'level', 'kills', 'gold'].forEach(c => {
+        const btn = document.getElementById(`cat-${c}`);
+        if (btn) {
+          if (c === cat) {
+            btn.className = "dq-btn px-3 py-1.5 border border-white bg-yellow-900 text-yellow-300 font-bold";
+          } else {
+            btn.className = "dq-btn px-3 py-1.5 border border-white/40 bg-gray-900 text-gray-300";
+          }
+        }
+      });
+      renderLeaderboardUI();
+    }
+
+    async function saveAndRefreshLeaderboard(showNotice = false) {
+      if (!window.currentUser) return;
+      
+      const nameVal = document.getElementById('rankUserNameInput').value.trim() || '農家勇者';
+      const titleVal = document.getElementById('rankUserTitleInput').value;
+      const msgVal = document.getElementById('rankUserMsgInput').value.trim() || '肥料計算で豊作を目指す！';
+
+      const userProfileData = {
+        uid: window.currentUser.uid,
+        name: nameVal,
+        title: titleVal,
+        msg: msgVal,
+        stage: RPG_STATE.maxStage,
+        level: RPG_STATE.level,
+        kills: RPG_STATE.kills,
+        gold: RPG_STATE.gold,
+        updatedAt: new Date().toISOString()
+      };
+
+      try {
+        const docRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'leaderboard', window.currentUser.uid);
+        await window.setDoc(docRef, userProfileData);
+        if (showNotice) alertDQ("🏆 あなたのスコアを世界勇者番付に登録・更新しました！");
+      } catch (e) {
+        console.error("Error saving leaderboard score", e);
+      }
+    }
+
+    function setupLeaderboardRealtimeListener() {
+      try {
+        const colRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'leaderboard');
+        window.onSnapshot(colRef, (snapshot) => {
+          const list = [];
+          snapshot.forEach(docSnap => {
+            list.push(docSnap.data());
+          });
+          localLeaderboardData = list;
+          renderLeaderboardUI();
+        }, (err) => {
+          console.warn("Leaderboard snapshot error", err);
+        });
+      } catch (err) {
+        console.error("Leaderboard setup failed", err);
+      }
+    }
+
+    function renderLeaderboardUI() {
+      const container = document.getElementById('leaderboardList');
+      if (!container) return;
+
+      if (!localLeaderboardData || localLeaderboardData.length === 0) {
+        container.innerHTML = '<div class="text-center py-6 text-gray-400 text-xs">現在登録されている勇者データはありません。スコアを更新してください！</div>';
+        return;
+      }
+
+      // Sort data dynamically by chosen category
+      const sorted = [...localLeaderboardData].sort((a, b) => {
+        const key = currentLeaderboardCategory;
+        return (b[key] || 0) - (a[key] || 0);
+      });
+
+      document.getElementById('leaderboardTotalCount').innerText = `表示件数: ${sorted.length}名`;
+
+      // Estimate My Rank
+      if (window.currentUser) {
+        const myIndex = sorted.findIndex(item => item.uid === window.currentUser.uid);
+        const rankText = myIndex >= 0 ? `第 ${myIndex + 1} 位` : '未登録';
+        const el = document.getElementById('myEstimatedRankDisplay');
+        if (el) el.innerText = rankText;
+      }
+
+      container.innerHTML = '';
+      sorted.forEach((item, idx) => {
+        const rank = idx + 1;
+        let windowClass = "dq-window p-3";
+        let rankBadge = `<span class="font-bold text-gray-300">#${rank}</span>`;
+
+        if (rank === 1) {
+          windowClass = "dq-window-gold p-3";
+          rankBadge = `<span class="text-yellow-400 font-bold text-base">🥇 1位</span>`;
+        } else if (rank === 2) {
+          windowClass = "dq-window-silver p-3";
+          rankBadge = `<span class="text-slate-300 font-bold text-base">🥈 2位</span>`;
+        } else if (rank === 3) {
+          windowClass = "dq-window-bronze p-3";
+          rankBadge = `<span class="text-amber-600 font-bold text-base">🥉 3位</span>`;
+        }
+
+        const isMe = window.currentUser && item.uid === window.currentUser.uid;
+        if (isMe) windowClass += " ring-2 ring-yellow-400";
+
+        const div = document.createElement('div');
+        div.className = `${windowClass} flex flex-wrap items-center justify-between gap-3 text-xs`;
+        div.innerHTML = `
+          <div class="flex items-center gap-3 min-w-[200px]">
+            <div class="w-12 text-center flex-shrink-0">${rankBadge}</div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-yellow-300 text-sm">${escapeHtml(item.name || '勇者')}</span>
+                ${isMe ? '<span class="bg-yellow-400 text-black font-bold text-[9px] px-1 rounded">あなた</span>' : ''}
+              </div>
+              <div class="text-[10px] text-emerald-400 font-bold">${escapeHtml(item.title || '農家')}</div>
+              <div class="text-[10px] text-gray-300 italic mt-0.5">"${escapeHtml(item.msg || '……')}"</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-4 gap-3 text-center bg-black/50 p-2 border border-white/20 flex-1 min-w-[240px]">
+            <div>
+              <div class="text-[9px] text-gray-400">最高階層</div>
+              <div class="font-bold text-yellow-300">${item.stage || 1} 階</div>
+            </div>
+            <div>
+              <div class="text-[9px] text-gray-400">レベル</div>
+              <div class="font-bold text-emerald-400">Lv.${item.level || 1}</div>
+            </div>
+            <div>
+              <div class="text-[9px] text-gray-400">魔物撃破</div>
+              <div class="font-bold text-cyan-400">${item.kills || 0} 匹</div>
+            </div>
+            <div>
+              <div class="text-[9px] text-gray-400">所持金</div>
+              <div class="font-bold text-yellow-400">${(item.gold || 0).toLocaleString()} G</div>
+            </div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // Initialize Game Logic on Startup
+    window.addEventListener('DOMContentLoaded', () => {
+      initFertilizerInputsUI();
+      recalculateFertilizer();
+      initMonster();
+    });
+  </script>
+</body>
+</html>
